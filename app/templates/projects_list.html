@@ -1,36 +1,38 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Projects</h2>
 
-<p><a href="{{ url_for('projects_new') }}"><button>Add Project</button></a></p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 style="color: var(--primary-purple);">All Projects</h2>
+    <a href="/projects/add" class="btn btn-primary">+ Add Project</a>
+</div>
 
-<table class="table table-bordered table-hover">
-  <thead class="table-dark">
+<table class="table table-hover shadow-sm">
+    <thead>
     <tr>
-      <th>ID</th><th>Name</th><th>Start</th><th>End</th><th>Dept</th><th>Summary</th><th>Actions</th>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Dept</th>
+        <th>Actions</th>
     </tr>
-  </thead>
-  <tbody>
-    {% for r in rows %}
-    <tr>
-      <td>{{ r[0] }}</td>
-      <td>{{ r[1] }}</td>
-      <td>{{ r[2] }}</td>
-      <td>{{ r[3] }}</td>
-      <td>{{ r[4] }}</td>
-      <td>{{ r[5] }}</td>
-      <td>
-        <a href="{{ url_for('projects_edit', project_id=r[0]) }}" class="btn btn-warning btn-sm">Edit</a>
+    </thead>
 
-        <form action="{{ url_for('projects_delete', project_id=r[0]) }}" method="post" style="display:inline;">
-          <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this project?');">Delete</button>
-        </form>
-      </td>
+    <tbody>
+    {% for row in rows %}
+    <tr>
+        <td>{{ row.project_id }}</td>
+        <td>{{ row.name }}</td>
+        <td>{{ row.start_date }}</td>
+        <td>{{ row.end_date }}</td>
+        <td>{{ row.dept_id }}</td>
+        <td>
+            <a href="/projects/edit/{{ row.project_id }}" class="btn btn-sm btn-primary">Edit</a>
+            <a href="/projects/delete/{{ row.project_id }}" class="btn btn-sm btn-danger">Delete</a>
+        </td>
     </tr>
     {% endfor %}
-  </tbody>
+    </tbody>
 </table>
-
-<a href="{{ url_for('projects_new') }}" class="btn btn-success">Add Project</a>
 
 {% endblock %}

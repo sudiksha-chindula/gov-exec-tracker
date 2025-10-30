@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="color: var(--primary-purple);">Dashboard Overview</h2>
+
+<div class="row mt-4">
+
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm text-center">
+            <h4>Total Projects</h4>
+            <h2 style="color: var(--primary-purple);">{{ stats.projects }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm text-center">
+            <h4>Active Tickets</h4>
+            <h2 style="color: var(--primary-purple);">{{ stats.open_tickets }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm text-center">
+            <h4>Contractors</h4>
+            <h2 style="color: var(--primary-purple);">{{ stats.contractors }}</h2>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 style="color: var(--primary-purple);">Contractors</h2>
+    <a href="/contractors/add" class="btn btn-primary">+ Add Contractor</a>
+</div>
+
+<table class="table table-hover shadow-sm">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Contact</th>
+        <th>Phone</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for c in rows %}
+    <tr>
+        <td>{{ c.contractor_id }}</td>
+        <td>{{ c.contractor_name }}</td>
+        <td>{{ c.contact_person }}</td>
+        <td>{{ c.phone }}</td>
+        <td>
+            <a href="/contractors/edit/{{ c.contractor_id }}" class="btn btn-sm btn-primary">Edit</a>
+            <a href="/contractors/delete/{{ c.contractor_id }}" class="btn btn-sm btn-danger">Delete</a>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
