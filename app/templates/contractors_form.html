@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="color: var(--primary-purple);">{{ title }}</h2>
+
+<form method="POST">
+    <div class="card p-4">
+        <div class="mb-2">
+            <label class="form-label fw-semibold">Contractor ID</label>
+            <input class="form-control" name="contractor_id" required>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label fw-semibold">Contractor Name</label>
+            <input class="form-control" name="contractor_name" required>
+        </div>
+    
+        <div class="mb-2">
+            <label class="form-label fw-semibold">Bid Amount</label>
+            <input type="number" step="0.01" class="form-control" name="bid_amount">
+        </div>
+        
+        <div class="mb-2">
+            <label class="form-label fw-semibold">Project ID</label>
+            <input type="number" class="form-control" name="project_id">
+        </div>
+
+        <button class="btn btn-primary mt-2">Save Contractor</button>
+    </div>
+</form>
+
+{% endblock %}

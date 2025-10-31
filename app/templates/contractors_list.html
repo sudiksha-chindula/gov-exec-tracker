@@ -11,8 +11,8 @@
     <tr>
         <th>ID</th>
         <th>Name</th>
-        <th>Contact</th>
-        <th>Phone</th>
+        <th>Bid Amount</th>
+        <th>Project ID</th>
         <th>Actions</th>
     </tr>
     </thead>
@@ -21,11 +21,11 @@
     {% for c in rows %}
     <tr>
         <td>{{ c.contractor_id }}</td>
-        <td>{{ c.contractor_name }}</td>
-        <td>{{ c.contact_person }}</td>
-        <td>{{ c.phone }}</td>
+        <td>{{ c.name }}</td> 
+        <td>${{ "%.2f"|format(c.bid_amount) }}</td>
+        <td>{{ c.project_id }}</td>
         <td>
-            <a href="/contractors/edit/{{ c.contractor_id }}" class="btn btn-sm btn-primary">Edit</a>
+            <a href="#" class="btn btn-sm btn-primary">Edit</a>
             <a href="/contractors/delete/{{ c.contractor_id }}" class="btn btn-sm btn-danger">Delete</a>
         </td>
     </tr>

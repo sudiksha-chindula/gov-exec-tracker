@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 style="color: var(--primary-purple);">Project Costs</h2>
+    <a href="/costs/add" class="btn btn-primary">+ Add Cost</a>
+</div>
+
+<table class="table table-hover shadow-sm">
+    <thead>
+    <tr>
+        <th>Project ID</th>
+        <th>Projected Cost</th>
+        <th>Actual Cost</th>
+        <th>Efficiency</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for cost in costs %}
+    <tr>
+        <td>{{ cost.project_id }}</td>
+        <td>${{ "%.2f"|format(cost.projected_cost) }}</td>
+        <td>${{ "%.2f"|format(cost.actual_cost) }}</td>
+        <td>{{ cost.efficiency }}%</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

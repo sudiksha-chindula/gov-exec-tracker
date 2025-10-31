@@ -1,4 +1,3 @@
-# app/__init__.py
 from flask import Flask
 from dotenv import load_dotenv, find_dotenv
 
@@ -17,6 +16,9 @@ def create_app():
     from .routes.employees import employees_bp
     from .routes.costs import costs_bp
     from .routes.tickets import tickets_bp
+    
+    # --- ADDED THIS ---
+    from .routes.dbms_demo import dbms_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     # dashboard exposes / and /dashboard (no prefix)
@@ -26,5 +28,8 @@ def create_app():
     app.register_blueprint(employees_bp, url_prefix="/employees")
     app.register_blueprint(costs_bp, url_prefix="/costs")
     app.register_blueprint(tickets_bp, url_prefix="/tickets")
+    
+    # --- ADDED THIS ---
+    app.register_blueprint(dbms_bp, url_prefix="/dbms")
 
     return app

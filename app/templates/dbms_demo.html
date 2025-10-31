@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% macro render_query_result(result) %}
+    {% if result %}
+        <div class="p-3 bg-light rounded-bottom">
+            <strong>SQL Executed:</strong>
+            <pre class="bg-dark text-white p-2 rounded small"><code>{{ result.sql }}</code></pre>
+
+            {% if result.error %}
+                <div class="alert alert-danger small"><strong>Error:</strong> {{ result.error }}</div>
+            {% elif not result.rows %}
+                <div class="alert alert-secondary small">Query ran, but returned no rows.</div>
+            {% else %}
+                <table class="table table-sm table-bordered table-striped small">
+                    <thead class="table-dark">
+                        <tr>
+                            {% for header in result.headers %}
+                                <th>{{ header }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in result.rows %}
+                            <tr>
+                                {% for header in result.headers %}
+                                    <td>{{ row[header] }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+
+<h2 style="color: var(--primary-purple);">DBMS Features Demo Page</h2>
+<p class="mb-4">Use this page to demonstrate advanced SQL features for your project evaluation.</p>
+
+<div class="row">
+    <div class="col-md-7">
+
+        <h3>Triggers</h3>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Trigger: `trig_calc_efficiency_before_update`</h5>
+                <p class="card-text small">Updates `efficiency` automatically when `actual_cost` is changed.</p>
+                <form action="{{ url_for('dbms.demo_trigger_efficiency') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Project ID</span>
+                        <input type="number" class="form-control" name="project_id" value="{{ defaults.project_id or 201 }}">
+                        <span class="input-group-text">New Actual Cost</span>
+                        <input type="number" class="form-control" name="actual_cost" value="15000000">
+                        <button class="btn btn-primary" type="submit">Run Update</button>
+                    </div>
+                </form>
+            </div>
+            {% if result_trigger_efficiency %}
+                <div class="p-3 bg-light rounded-bottom">
+                    <strong>Before:</strong>
+                    {{ render_query_result(result_trigger_efficiency.before) }}
+                    <strong>After:</strong>
+                    {{ render_query_result(result_trigger_efficiency.after) }}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Trigger: `trig_auto_ticket_solution`</h5>
+                <p class="card-text small">Automatically inserts a row into `ticket_solutions` when a `ticket` status is set to 'resolved'.</p>
+                <form action="{{ url_for('dbms.demo_trigger_ticket') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Ticket ID</span>
+                        <input type="number" class="form-control" name="ticket_id" value="{{ defaults.ticket_id or 703 }}">
+                        <button class="btn btn-primary" type="submit">Resolve Ticket</button>
+                    </div>
+                </form>
+            </div>
+            {% if result_trigger_ticket %}
+                <div class="p-3 bg-light rounded-bottom">
+                    <strong>`ticket_solutions` Before:</strong>
+                    {{ render_query_result(result_trigger_ticket.before) }}
+                    <strong>`ticket_solutions` After:</strong>
+                    {{ render_query_result(result_trigger_ticket.after) }}
+                    <p class="small text-muted mt-2">Note: This test auto-resets the ticket to 'In Progress' and deletes the solution row so it can be run again.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Trigger: `trig_project_status_change`</h5>
+                <p class="card-text small">Logs a summary to `project_updates` when a `project` status changes.</p>
+                <form action="{{ url_for('dbms.demo_trigger_status') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Project ID</span>
+                        <input type="number" class="form-control" name="project_id" value="{{ defaults.project_id or 201 }}">
+                        <button class="btn btn-primary" type="submit">Set Status to 'Completed'</button>
+                    </div>
+                </form>
+            </div>
+            {% if result_trigger_status %}
+                <div class="p-3 bg-light rounded-bottom">
+                    <strong>`project_updates` Before:</strong>
+                    {{ render_query_result(result_trigger_status.before) }}
+                    <strong>`project_updates` After:</strong>
+                    {{ render_query_result(result_trigger_status.after) }}
+                    <p class="small text-muted mt-2">Note: This test auto-resets the project status.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <h3 class="mt-5">Stored Procedures</h3>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Procedure: `add_project`</h5>
+                <p class="card-text small">Adds a new project, but only if the `dept_id` exists (error handling).</p>
+                <form action="{{ url_for('dbms.demo_proc_add_project') }}" method="POST">
+                    <div class="row g-2">
+                        <div class="col-md-4"><input class="form-control" name="project_id" placeholder="Project ID (e.g., 999)" required></div>
+                        <div class="col-md-8"><input class="form-control" name="name" placeholder="Project Name" value="Demo Project" required></div>
+                        <div class="col-md-6"><input class="form-control" name="start_date" type="date" value="2025-01-01"></div>
+                        <div class="col-md-6"><input class="form-control" name="end_date" type="date" value="2025-12-31"></div>
+                        <div class="col-md-4"><input class="form-control" name="dept_id" placeholder="Dept ID (e.g., 101 or 999)" value="101"></div>
+                        <div class="col-md-8"><input class="form-control" name="summary" placeholder="Summary" value="Demo summary"></div>
+                    </div>
+                    <button class="btn btn-primary mt-2" type="submit">Run (Valid Dept: 101)</button>
+                    <button class="btn btn-outline-danger mt-2" type="submit" onclick="this.form.dept_id.value='999'">Run (Invalid Dept: 999)</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Procedure: `get_project_report`</h5>
+                <p class="card-text small">Generates a detailed report for a single project.</p>
+                <form action="{{ url_for('dbms.demo_proc_report') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Project ID</span>
+                        <input type="number" class="form-control" name="project_id" value="{{ defaults.project_id or 201 }}">
+                        <button class="btn btn-primary" type="submit">Generate Report</button>
+                    </div>
+                </form>
+            </div>
+            {{ render_query_result(result_proc_report) }}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Procedure: `close_completed_projects`</h5>
+                <p class="card-text small">Finds all projects with an `end_date` in the past and appends a "Completed" note to their summary.</p>
+                <form action="{{ url_for('dbms.demo_proc_close') }}" method="POST">
+                    <button class="btn btn-primary" type="submit">Run Batch Job</button>
+                </form>
+            </div>
+            {% if result_proc_close %}
+                <div class="p-3 bg-light rounded-bottom">
+                    <strong>Summaries Before:</strong>
+                    {{ render_query_result(result_proc_close.before) }}
+                    <strong>Summaries After:</strong>
+                    {{ render_query_result(result_proc_close.after) }}
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+    
+    <div class="col-md-5">
+
+        <h3>Functions</h3>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Function: `get_project_efficiency`</h5>
+                <form action="{{ url_for('dbms.demo_func_efficiency') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Project ID</span>
+                        <input type="number" class="form-control" name="project_id" value="{{ defaults.project_id or 201 }}">
+                        <button class="btn btn-primary" type="submit">Calculate</button>
+                    </div>
+                </form>
+            </div>
+            {{ render_query_result(result_func_efficiency) }}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Function: `total_tickets`</h5>
+                <form action="{{ url_for('dbms.demo_func_tickets') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Project ID</span>
+                        <input type="number" class="form-control" name="project_id" value="{{ defaults.project_id or 201 }}">
+                        <button class="btn btn-primary" type="submit">Calculate</button>
+                    </div>
+                </form>
+            </div>
+            {{ render_query_result(result_func_tickets) }}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Function: `ticket_resolution_ratio`</h5>
+                <form action="{{ url_for('dbms.demo_func_ratio') }}" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-text">Project ID</span>
+                        <input type="number" class="form-control" name="project_id" value="{{ defaults.project_id or 201 }}">
+                        <button class="btn btn-primary" type="submit">Calculate</button>
+                    </div>
+                </form>
+            </div>
+            {{ render_query_result(result_func_ratio) }}
+        </div>
+        
+        <h3 class="mt-5">Complex Queries</h3>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Nested Query</h5>
+                <p class="card-text small">Finds the department with the most projects.</p>
+                <a href="{{ url_for('dbms.demo_query_nested') }}" class="btn btn-primary">Run Query</a>
+            </div>
+            {{ render_query_result(result_query_nested) }}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Join Query</h5>
+                <p class="card-text small">Gets all unresolved tickets and joins them with project names.</p>
+                <a href="{{ url_for('dbms.demo_query_join') }}" class="btn btn-primary">Run Query</a>
+            </div>
+            {{ render_query_result(result_query_join) }}
+        </div>
+        
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Aggregate Query</h5>
+                <p class="card-text small">Finds the top 5 most expensive projects by projected cost.</p>
+                <a href="{{ url_for('dbms.demo_query_aggregate') }}" class="btn btn-primary">Run Query</a>
+            </div>
+            {{ render_query_result(result_query_aggregate) }}
+        </div>
+        
+        <h3 class="mt-5">Users & Privileges</h3>
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">User Creation</h5>
+                <p class="card-text small">The following SQL commands were used to create users with different privilege levels:</p>
+                <pre class="bg-dark text-white p-2 rounded small"><code>
+-- 1. Create Users
+CREATE USER 'app_admin'@'localhost' IDENTIFIED BY '...';
+CREATE USER 'data_entry_user'@'localhost' IDENTIFIED BY '...';
+CREATE USER 'viewer_user'@'localhost' IDENTIFIED BY '...';
+
+-- 2. Grant Privileges
+GRANT ALL PRIVILEGES ON govexectracker.* TO 'app_admin'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON govexectracker.* TO 'data_entry_user'@'localhost';
+GRANT SELECT ON govexectracker.* TO 'viewer_user'@'localhost';
+FLUSH PRIVILEGES;
+                </code></pre>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
