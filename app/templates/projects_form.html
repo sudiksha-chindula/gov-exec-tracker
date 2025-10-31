@@ -4,29 +4,46 @@
 <h2 style="color: var(--primary-purple);">{{ title }}</h2>
 
 <form method="POST">
+    {% if not project %}
     <div class="mb-2">
         <label class="form-label fw-semibold">Project ID</label>
-        <input class="form-control" name="project_id" value="{{ project.project_id if project }}" {% if project %}readonly{% endif %}>
+        <input class="form-control" name="project_id" required>
     </div>
+    {% endif %}
 
     <div class="mb-2">
-        <label class="form-label fw-semibold">Name</label>
+        <label class="form-label fw-semibold">Project Name</label>
         <input class="form-control" name="name" value="{{ project.name if project }}">
     </div>
 
-    <div class="mb-2">
-        <label class="form-label fw-semibold">Start Date</label>
-        <input type="date" class="form-control" name="start_date" value="{{ project.start_date if project }}">
+    <div class="row mb-2">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Start Date</label>
+            <input type="date" class="form-control" name="start_date" value="{{ project.start_date|string|replace(' 00:00:00 GMT', '') if project }}">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">End Date</label>
+            <input type="date" class="form-control" name="end_date" value="{{ project.end_date|string|replace(' 00:00:00 GMT', '') if project }}">
+        </div>
     </div>
-
-    <div class="mb-2">
-        <label class="form-label fw-semibold">End Date</label>
-        <input type="date" class="form-control" name="end_date" value="{{ project.end_date if project }}">
-    </div>
-
-    <div class="mb-2">
-        <label class="form-label fw-semibold">Dept ID</label>
-        <input class="form-control" name="dept_id" value="{{ project.dept_id if project }}">
+    
+    <div class="row mb-2">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Department ID</label>
+            <input class="form-control" name="dept_id" value="{{ project.dept_id if project }}">
+        </div>
+        
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Status</label>
+            <select class="form-select" name="status">
+                {% set statuses = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Cancelled'] %}
+                {% for status in statuses %}
+                    <option value="{{ status }}" {% if project and project.status == status %}selected{% endif %}>
+                        {{ status }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
 
     <div class="mb-2">
