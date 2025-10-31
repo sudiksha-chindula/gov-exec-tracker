@@ -9,17 +9,18 @@
         <th>ID</th>
         <th>Name</th>
         <th>Dept</th>
-        <th>Role</th>
+        <th>Role (Manager)</th>
     </tr>
     </thead>
 
     <tbody>
     {% for e in rows %}
     <tr>
-        <td>{{ e.emp_id }}</td>
+        <td>{{ e.govt_emp_id }}</td>
         <td>{{ e.name }}</td>
         <td>{{ e.dept_id }}</td>
-        <td>{{ e.role }}</td> </tr>
+        <td>{{ e.manager }}</td>
+    </tr>
     {% endfor %}
     </tbody>
 </table>
