@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if session.role == 'employee' %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 style="color: var(--primary-purple);">Contractors</h2>
-    <a href="/contractors/add" class="btn btn-primary">+ Add Contractor</a>
+    <!-- FIX: Use url_for() -->
+    <a href="{{ url_for('contractors.add_contractor') }}" class="btn btn-primary">+ Add Contractor</a>
 </div>
+{% else %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 style="color: var(--primary-purple);">View Contractors</h2>
+</div>
+{% endif %}
 
 <table class="table table-hover shadow-sm">
     <thead>
@@ -13,7 +20,9 @@
         <th>Name</th>
         <th>Bid Amount</th>
         <th>Project ID</th>
+        {% if session.role == 'employee' %}
         <th>Actions</th>
+        {% endif %}
     </tr>
     </thead>
 
@@ -24,10 +33,20 @@
         <td>{{ c.name }}</td> 
         <td>${{ "%.2f"|format(c.bid_amount) }}</td>
         <td>{{ c.project_id }}</td>
+        {% if session.role == 'employee' %}
         <td>
-            <a href="#" class="btn btn-sm btn-primary">Edit</a>
-            <a href="/contractors/delete/{{ c.contractor_id }}" class="btn btn-sm btn-danger">Delete</a>
+            <!-- FIX: This link now works -->
+            <a href="{{ url_for('contractors.edit_contractor', cid=c.contractor_id) }}" class="btn btn-sm btn-primary">Edit</a>
+            
+            <!-- FIX: Delete is now a POST form -->
+            <form action="{{ url_for('contractors.delete_contractor', cid=c.contractor_id) }}" method="POST" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-danger" 
+                        onclick="return confirm('Are you sure you want to delete this contractor? This will also delete all their employees.');">
+                    Delete
+                </button>
+            </form>
         </td>
+        {% endif %}
     </tr>
     {% endfor %}
     </tbody>

@@ -1,63 +1,107 @@
-# app/routes/contractors.py
-from flask import Blueprint, render_template, request, redirect, session, url_for
-from functools import wraps
-from app.db import get_db
+from flask import (
+    Blueprint, render_template, request, redirect, session, url_for, flash, abort
+)
+from app.db import get_db, query
+from .auth import login_required, role_required
 
 contractors_bp = Blueprint("contractors", __name__, url_prefix="/contractors")
-
-def login_required(view):
-    @wraps(view)
-    def wrapper(*a, **kw):
-        # --- FIXED: Check for emp_id ---
-        if "emp_id" not in session:
-            return redirect(url_for("auth.login"))
-        return view(*a, **kw)
-    return wrapper
 
 @contractors_bp.route("/")
 @login_required
 def list_contractors():
-    db = get_db()
-    cur = db.cursor(dictionary=True)
-    # This query was correct
-    cur.execute("SELECT * FROM contractors")
-    rows = cur.fetchall()
+    # Block admins, as per your nav bar logic
+    if session.get('role') == 'admin':
+        abort(403)
+        
+    rows = query("SELECT * FROM contractors", fetch=True)
     return render_template("contractors_list.html", rows=rows)
 
+# ===============================================
+# ==  THIS FUNCTION IS NOW FIXED (Your Way)    ==
+# ===============================================
 @contractors_bp.route("/add", methods=["GET","POST"])
 @login_required
+@role_required("employee")
 def add_contractor():
     if request.method == "POST":
-        db = get_db()
-        cur = db.cursor()
-        
-        # --- FIXED: MAJOR SCHEMA MISMATCH ---
-        # Your code was trying to insert 'phone', which doesn't exist.
-        # The schema has 'bid_amount' and 'project_id'.
-        # Your HTML form MUST be updated to send these new fields.
-        q = """
-            INSERT INTO contractors (contractor_id, name, bid_amount, project_id) 
-            VALUES (%s, %s, %s, %s)
-        """
-        cur.execute(q, (
-            request.form["contractor_id"],
-            request.form["contractor_name"],
-            request.form.get("bid_amount"),  # Use .get() for optional fields
-            request.form.get("project_id")   # Use .get() for optional fields
-        ))
-        db.commit()
-        # --- FIXED: Use url_for for redirect ---
-        return redirect(url_for("contractors.list_contractors"))
+        try:
+            # Matches your contractors_form.html names
+            q = """
+                -- FIX: Added contractor_id to the INSERT query
+                INSERT INTO contractors (contractor_id, name, bid_amount, project_id) 
+                VALUES (%s, %s, %s, %s)
+            """
+            
+            query(q, (
+                # FIX: Read the new contractor_id from the form
+                request.form["contractor_id"], 
+                request.form["contractor_name"],
+                request.form.get("bid_amount"),
+                request.form.get("project_id")
+            ), fetch=False)
 
-    return render_template("contractors_form.html", title="Add Contractor", data=None)
+            flash("Contractor added successfully!", "success")
+            return redirect(url_for("contractors.list_contractors"))
+        except Exception as e:
+            flash(f"Error adding contractor: {e}", "danger")
+            # Re-render form with an error, pass data back
+            return render_template("contractors_form.html", contractor=request.form, title="Add Contractor")
 
-@contractors_bp.route("/delete/<int:cid>")
+    # For a GET request, just show the blank form
+    return render_template("contractors_form.html", contractor=None, title="Add Contractor")
+
+# --- THIS IS THE MISSING EDIT ROUTE ---
+@contractors_bp.route("/edit/<int:cid>", methods=["GET", "POST"])
 @login_required
+@role_required("employee")
+def edit_contractor(cid):
+    if request.method == "POST":
+        # Handle the form submission (UPDATE logic)
+        try:
+            query(
+                """
+                UPDATE contractors 
+                SET name = %s, bid_amount = %s, project_id = %s
+                WHERE contractor_id = %s
+                """,
+                (
+                    request.form["contractor_name"],
+                    request.form.get("bid_amount"),
+                    request.form.get("project_id"),
+                    cid
+                ),
+                fetch=False
+            )
+            flash("Contractor updated successfully!", "success")
+            return redirect(url_for("contractors.list_contractors"))
+        except Exception as e:
+            flash(f"Error updating contractor: {e}", "danger")
+            # Show the form again if update failed
+            return render_template("contractors_form.html", contractor=request.form, title="Edit Contractor")
+
+    # GET request: fetch the contractor and show the pre-filled form
+    contractor_list = query("SELECT * FROM contractors WHERE contractor_id = %s", (cid,), fetch=True)
+    if not contractor_list:
+        flash("Contractor not found.", "danger")
+        return redirect(url_for("contractors.list_contractors"))
+    
+    # Pass the first result (contractor_list[0]) to the template
+    return render_template("contractors_form.html", contractor=contractor_list[0], title="Edit Contractor")
+
+
+# --- THIS IS THE CORRECTED DELETE ROUTE ---
+@contractors_bp.route("/delete/<int:cid>", methods=["POST"])
+@login_required
+@role_required("employee")
 def delete_contractor(cid):
-    db = get_db()
-    cur = db.cursor()
-    # This query was correct
-    cur.execute("DELETE FROM contractors WHERE contractor_id=%s", (cid,))
-    db.commit()
-    # --- FIXED: Use url_for for redirect ---
+    try:
+        # IMPORTANT: You must delete from 'working_employees' first!
+        #query("DELETE FROM working_employees WHERE contractor_id = %s", (cid,), fetch=False)
+        
+        # Now you can delete the contractor
+        query("DELETE FROM contractors WHERE contractor_id=%s", (cid,), fetch=False)
+        flash("Contractor and all related employees deleted.", "success")
+    except Exception as e:
+        flash(f"Error deleting contractor: {e}", "danger")
+        
     return redirect(url_for("contractors.list_contractors"))

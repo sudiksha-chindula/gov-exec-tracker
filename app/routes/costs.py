@@ -1,18 +1,11 @@
 # app/routes/costs.py
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from app.db import get_db
-from functools import wraps # --- ADDED IMPORT ---
+from functools import wraps
+from .auth import login_required
 
 costs_bp = Blueprint('costs', __name__, url_prefix="/costs")
 
-# --- ADDED: Login protection ---
-def login_required(view):
-    @wraps(view)
-    def wrapper(*a, **kw):
-        if "emp_id" not in session:
-            return redirect(url_for("auth.login"))
-        return view(*a, **kw)
-    return wrapper
 # ---------------------------------
 
 @costs_bp.route("/")
@@ -29,6 +22,9 @@ def list_costs():
 @costs_bp.route("/add", methods=["GET", "POST"])
 @login_required  # --- ADDED DECORATOR ---
 def add_cost():
+    if session.get('role') != 'employee':
+        flash("You are not authorized to perform this action.", "danger")
+        return redirect(url_for("projects.list_projects"))
     if request.method == "POST":
         # --- FIXED: MAJOR SCHEMA MISMATCH ---
         # Your code sent 'material_cost', 'labor_cost', 'misc_cost'.

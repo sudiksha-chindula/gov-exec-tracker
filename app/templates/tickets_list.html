@@ -26,13 +26,162 @@
         <td>{{ row.date_raised }}</td>
         <td>{{ row.project_id }}</td>
         <td>
-            {% if row.status|lower == 'open' %}
-                <a href="/tickets/resolve/{{ row.ticket_id }}" class="btn btn-sm btn-primary">Resolve</a>
+            
+            {% if row.status|lower != 'resolved' and row.status|lower != 'closed' %}
+                
+                {% if session.role.lower() == 'admin' %}
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#resolveModal-{{ row.ticket_id }}">
+                        Resolve
+                    </button>
+                {% else %}
+                    <span class="text-muted fst-italic">Pending</span>
+                {% endif %}
+
+            {% else %}
+                
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#viewSolutionModal-{{ row.ticket_id }}">
+                    View Solution
+                </button>
+
             {% endif %}
+            
         </td>
     </tr>
+
+    <!-- 
+      MODAL 1: The "Resolve Ticket" FORM
+      This modal is for submitting a new solution.
+    -->
+    <div class="modal fade" id="resolveModal-{{ row.ticket_id }}" tabindex="-1" aria-labelledby="modalLabel-{{ row.ticket_id }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalLabel-{{ row.ticket_id }}">Resolve Ticket #{{ row.ticket_id }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form action="{{ url_for('tickets.resolve_ticket') }}" method="POST">
+            <div class="modal-body">
+                <p><strong>Complaint:</strong> {{ row.title }}</p>
+                <hr>
+                
+                <!-- Hidden input to send the ticket_id -->
+                <input type="hidden" name="ticket_id" value="{{ row.ticket_id }}">
+
+                <div class="mb-3">
+                    <label for="solution_id-{{ row.ticket_id }}" class="form-label">Solution ID (Unique)</label>
+                    <input type="text" class="form-control" name="solution_id" id="solution_id-{{ row.ticket_id }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="admin_id-{{ row.ticket_id }}" class="form-label">Your Admin ID</label>
+                    <!-- We pre-fill this from the user's login session -->
+                    <input type="text" class="form-control" name="admin_id" id="admin_id-{{ row.ticket_id }}" value="{{ session.get('emp_id') or '' }}" readonly required>
+                </div>
+                <div class="mb-3">
+                    <label for="summary-{{ row.ticket_id }}" class="form-label">Resolution Summary</label>
+                    <textarea class="form-control" name="summary" id="summary-{{ row.ticket_id }}" rows="4" required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Submit Resolution</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- END OF MODAL 1 -->
+
+    <!-- 
+      MODAL 2: "View Solution" DISPLAY
+      This new modal simply displays the solution details we fetched from the database.
+    -->
+    <div class="modal fade" id="viewSolutionModal-{{ row.ticket_id }}" tabindex="-1" aria-labelledby="viewModalLabel-{{ row.ticket_id }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="viewModalLabel-{{ row.ticket_id }}">Solution for Ticket #{{ row.ticket_id }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+              <p><strong>Complaint:</strong><br> {{ row.title }}</p>
+              <hr>
+              <!-- This data comes from the new LEFT JOIN in tickets.py -->
+              <p><strong>Resolved by Admin ID:</strong><br> {{ row.admin_id or 'N/A' }}</p>
+              <p class="mt-3"><strong>Resolution Summary:</strong></p>
+              <p class="bg-light p-3 rounded-2">{{ row.solution_summary or 'No solution summary was provided.' }}</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END OF NEW MODAL 2 -->
+
     {% endfor %}
     </tbody>
 </table>
+
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 style="color: var(--primary-purple);">Tickets</h2>
+    
+    {% if session.role.lower() == 'citizen' %}
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#fileTicketModal">
+        File New Ticket
+    </button>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="fileTicketModal" tabindex="-1" aria-labelledby="fileTicketModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="fileTicketModalLabel">File a New Ticket</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <form action="{{ url_for('tickets.file_ticket') }}" method="POST">
+        <div class="modal-body">
+          
+          <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            <input type="text" class="form-control" name="title" id="title" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="date_raised" class="form-label">Date Raised</label>
+            <input type="date" class="form-control" name="date_raised" id="date_raised" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="citizen_id" class="form-label">Your Citizen ID</label>
+            <input type="text" class="form-control" name="citizen_id" id="citizen_id" value="{{ session.get('citizen_id') }}" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label for="project_id" class="form-label">Related Project</label>
+            <select class="form-select" name="project_id" id="project_id" required>
+                <option value="" disabled selected>Select a project...</option>
+                {% for project in projects %}
+                <option value="{{ project.project_id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label for="description" class="form-label">Ticket Description</label>
+            <textarea class="form-control" name="description" id="description" rows="4" required></textarea>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

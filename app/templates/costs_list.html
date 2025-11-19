@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if session.role == 'employee' %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 style="color: var(--primary-purple);">Project Costs</h2>
-    <a href="/costs/add" class="btn btn-primary">+ Add Cost</a>
+    <!-- FIX: Use url_for() for the link -->
+    <a href="{{ url_for('costs.add_cost') }}" class="btn btn-primary">+ Add Cost</a>
 </div>
+{% else %}
+<div class="d-flex justify-content-between align-items.center mb-3">
+    <h2 style="color: var(--primary-purple);">View Project Costs</h2>
+</div>
+{% endif %}
 
 <table class="table table-hover shadow-sm">
     <thead>
@@ -17,12 +24,13 @@
     </thead>
 
     <tbody>
+    <!-- This loop is correct and matches your file -->
     {% for cost in costs %}
     <tr>
         <td>{{ cost.project_id }}</td>
         <td>${{ "%.2f"|format(cost.projected_cost) }}</td>
         <td>${{ "%.2f"|format(cost.actual_cost) }}</td>
-        <td>{{ cost.efficiency }}%</td>
+        <td>{{ "%.2f"|format(cost.efficiency) }}%</td>
     </tr>
     {% endfor %}
     </tbody>

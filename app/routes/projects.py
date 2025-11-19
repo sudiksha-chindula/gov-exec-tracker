@@ -1,86 +1,169 @@
-from flask import Blueprint, render_template, request, redirect, session, url_for
-from functools import wraps
-from app.db import get_db
+from flask import (Blueprint, render_template, request, flash, redirect, url_for, session, abort)
+from app.db import get_db, query
+# Use your specific auth decorators
+from .auth import login_required, role_required
 
-projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
-
-def login_required(view):
-    @wraps(view)
-    def wrapper(*a, **kw):
-        if "emp_id" not in session:
-            return redirect(url_for("auth.login"))
-        return view(*a, **kw)
-    return wrapper
+projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
 
 @projects_bp.route("/")
 @login_required
 def list_projects():
+    # 1. ADMIN GUARD
+    if session.get('role') == 'admin':
+        abort(403) 
+
     db = get_db()
     cur = db.cursor(dictionary=True)
+    
+    # 2. Get all projects
     cur.execute("SELECT * FROM projects")
-    rows = cur.fetchall()
-    return render_template("projects_list.html", rows=rows)
+    projects = cur.fetchall() # Get the projects
+    
+    # 3. Get ALL subtasks
+    cur.execute("SELECT * FROM subtasks")
+    all_subtasks = cur.fetchall()
+    
+    cur.close()
 
-@projects_bp.route("/add", methods=["GET","POST"])
+    # 4. Group subtasks by their project_id
+    subtasks_by_project = {}
+    for task in all_subtasks:
+        pid = task['project_id']
+        if pid not in subtasks_by_project:
+            subtasks_by_project[pid] = []
+        subtasks_by_project[pid].append(task)
+
+    # 5. Pass both to the template
+    return render_template(
+        "projects_list.html", 
+        rows=projects, 
+        subtasks_by_project=subtasks_by_project
+    )
+
+@projects_bp.route("/add", methods=["GET", "POST"])
 @login_required
+@role_required("employee")
 def add_project():
     if request.method == "POST":
-        db = get_db()
-        cur = db.cursor()
-        
-        # FIXED: Added the 'status' column to the INSERT query
-        q = """
-            INSERT INTO projects (project_id, name, start_date, end_date, dept_id, summary, status) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.execute(q, (
-            request.form["project_id"],
-            request.form["name"],
-            request.form["start_date"],
-            request.form["end_date"],
-            request.form["dept_id"],
-            request.form["summary"],
-            request.form["status"]  # Get 'status' from the form
-        ))
-        db.commit()
-        return redirect(url_for("projects.list_projects"))
+        try:
+            # Call your stored procedure 'add_project'
+            query(
+                "CALL add_project(%s, %s, %s, %s, %s, %s)",
+                (
+                    request.form["project_id"],
+                    request.form["name"],
+                    request.form["start_date"],
+                    request.form["end_date"],
+                    request.form["dept_id"],
+                    request.form["summary"]
+                ),
+                fetch=False
+            )
+            flash("Project added successfully!", "success")
+            return redirect(url_for("projects.list_projects"))
+        except Exception as e:
+            flash(f"Error adding project: {e}", "danger")
+            # Re-render form with an error, pass data back
+            return render_template("project_form.html", project=request.form)
 
-    return render_template("projects_form.html", project=None, title="Add Project")
+    # For a GET request, just show the blank form
+    return render_template("project_form.html", project=None)
 
-@projects_bp.route("/edit/<int:pid>", methods=["GET","POST"])
+
+@projects_bp.route("/edit/<int:pid>", methods=["GET", "POST"])
 @login_required
+@role_required("employee")
 def edit_project(pid):
-    db = get_db()
-    cur = db.cursor(dictionary=True)
-
     if request.method == "POST":
-        # FIXED: Added 'status' to the UPDATE query
-        q = """
-            UPDATE projects 
-            SET name=%s, start_date=%s, end_date=%s, dept_id=%s, summary=%s, status=%s
-            WHERE project_id=%s
-        """
-        cur.execute(q, (
-            request.form["name"],
-            request.form["start_date"],
-            request.form["end_date"],
-            request.form["dept_id"],
-            request.form["summary"],
-            request.form["status"],  # Get 'status' from the form
-            pid
-        ))
-        db.commit()
+        # Handle the form submission (UPDATE logic)
+        try:
+            query(
+                """
+                UPDATE projects 
+                SET name = %s, start_date = %s, end_date = %s, 
+                    dept_id = %s, status = %s, summary = %s
+                WHERE project_id = %s
+                """,
+                (
+                    request.form["name"],
+                    request.form["start_date"],
+                    request.form["end_date"],
+                    request.form["dept_id"],
+                    request.form["status"],
+                    request.form["summary"],
+                    pid
+                ),
+                fetch=False
+            )
+            flash("Project updated successfully!", "success")
+            return redirect(url_for("projects.list_projects"))
+        except Exception as e:
+            flash(f"Error updating project: {e}", "danger")
+            # Show the form again if update failed
+            return render_template("project_form.html", project=request.form)
+
+    # For a GET request, fetch the project and show the pre-filled form
+    project = query("SELECT * FROM projects WHERE project_id = %s", (pid,), fetch=True)
+    if not project:
+        flash("Project not found.", "danger")
         return redirect(url_for("projects.list_projects"))
+    
+    # Pass the first result (project[0]) to the template
+    return render_template("project_form.html", project=project[0])
 
-    cur.execute("SELECT * FROM projects WHERE project_id=%s", (pid,))
-    row = cur.fetchone()
-    return render_template("projects_form.html", project=row, title="Edit Project")
 
-@projects_bp.route("/delete/<int:pid>")
+@projects_bp.route("/delete/<int:pid>", methods=["POST"])
 @login_required
+@role_required("employee")
 def delete_project(pid):
-    db = get_db()
-    cur = db.cursor()
-    cur.execute("DELETE FROM projects WHERE project_id=%s", (pid,))
-    db.commit()
+    try:
+        # You must delete from child tables first (like subtasks, tickets, etc.)
+        query("DELETE FROM subtasks WHERE project_id = %s", (pid,), fetch=False)
+        query("DELETE FROM tickets WHERE project_id = %s", (pid,), fetch=False)
+        query("DELETE FROM project_costs WHERE project_id = %s", (pid,), fetch=False)
+        # Now you can delete from the parent table
+        query("DELETE FROM projects WHERE project_id = %s", (pid,), fetch=False)
+        flash("Project and all related data deleted successfully.", "success")
+    except Exception as e:
+        flash(f"Error deleting project: {e}. (Check for other related records)", "danger")
+        
     return redirect(url_for("projects.list_projects"))
+
+
+@projects_bp.route("/add-subtask", methods=["POST"])
+@login_required
+@role_required("employee")
+def add_subtask():
+    title = request.form.get("title")
+    status = request.form.get("status")
+    project_id = request.form.get("project_id")
+
+    try:
+        # Use 'name' to match your subtasks table structure
+        query(
+            "INSERT INTO subtasks (name, status, project_id) VALUES (%s, %s, %s)",
+            (title, status, project_id),
+            fetch=False
+        )
+        flash("Subtask added successfully!", "success")
+    except Exception as e:
+        flash(f"Error adding subtask: {e}", "danger")
+
+    return redirect(url_for('projects.list_projects'))
+
+# ===============================================
+# ==  NEW ROUTE TO DELETE A SUBTASK            ==
+# ===============================================
+@projects_bp.route("/subtask/delete/<int:task_id>", methods=["POST"])
+@login_required
+@role_required("employee")
+def delete_subtask(task_id):
+    try:
+        # Run the delete query
+        query("DELETE FROM subtasks WHERE task_id = %s", (task_id,), fetch=False)
+        flash("Subtask deleted successfully.", "success")
+    except Exception as e:
+        flash(f"Error deleting subtask: {e}", "danger")
+    
+    # Redirect back to the main projects list
+    return redirect(url_for('projects.list_projects'))
