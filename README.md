@@ -9,7 +9,8 @@
 
 ## Team Members
 
-Sudiksha Chindula - PES1UG23CS902
+Sudiksha Chindula - PES1UG23CS902  
+
 Yatin Prabhakar - PES1UG23CS719
 
 ---
@@ -55,11 +56,6 @@ python -m venv .venv #create environment
 ### 3. Install dependencies
 ```bash
 pip install -r requirements.txt
-```
-
-### 4. Navigate to 'version_2' branch
-```bash
-git checkout version_2
 ```
 
 ### 5. Run the server
