@@ -58,7 +58,7 @@ python -m venv .venv #create environment
 pip install -r requirements.txt
 ```
 
-### 5. Run the server
+### 4. Run the server
 ```bash
 flask run
 ```
