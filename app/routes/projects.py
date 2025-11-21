@@ -64,19 +64,22 @@ def add_project():
         except Exception as e:
             flash(f"Error adding project: {e}", "danger")
             # Re-render form with an error, pass data back
-            return render_template("project_form.html", project=request.form)
+            return render_template("projects_form.html", project=request.form)
 
     # For a GET request, just show the blank form
-    return render_template("project_form.html", project=None)
+    return render_template("projects_form.html", project=None)
 
 
 @projects_bp.route("/edit/<int:pid>", methods=["GET", "POST"])
 @login_required
 @role_required("employee")
 def edit_project(pid):
+    # 1. Handle POST (Form Submission)
     if request.method == "POST":
-        # Handle the form submission (UPDATE logic)
         try:
+            # Convert data types explicitly to avoid database errors
+            dept_id = int(request.form["dept_id"])
+            
             query(
                 """
                 UPDATE projects 
@@ -88,7 +91,7 @@ def edit_project(pid):
                     request.form["name"],
                     request.form["start_date"],
                     request.form["end_date"],
-                    request.form["dept_id"],
+                    dept_id,
                     request.form["status"],
                     request.form["summary"],
                     pid
@@ -97,20 +100,32 @@ def edit_project(pid):
             )
             flash("Project updated successfully!", "success")
             return redirect(url_for("projects.list_projects"))
+            
         except Exception as e:
             flash(f"Error updating project: {e}", "danger")
-            # Show the form again if update failed
-            return render_template("project_form.html", project=request.form)
+            # CRITICAL FIX: Return the template here if an error occurs
+            # You must rebuild the 'project' object from the form data so the user doesn't lose their edits
+            project_data = {
+                "project_id": pid,
+                "name": request.form["name"],
+                "start_date": request.form["start_date"],
+                "end_date": request.form["end_date"],
+                "dept_id": request.form["dept_id"],
+                "status": request.form["status"],
+                "summary": request.form["summary"]
+            }
+            return render_template("projects_form.html", project=project_data)
 
-    # For a GET request, fetch the project and show the pre-filled form
+    # 2. Handle GET (Page Load)
+    # Fetch the project to pre-fill the form
     project = query("SELECT * FROM projects WHERE project_id = %s", (pid,), fetch=True)
+    
     if not project:
         flash("Project not found.", "danger")
         return redirect(url_for("projects.list_projects"))
     
     # Pass the first result (project[0]) to the template
-    return render_template("project_form.html", project=project[0])
-
+    return render_template("projects_form.html", project=project[0])
 
 @projects_bp.route("/delete/<int:pid>", methods=["POST"])
 @login_required
